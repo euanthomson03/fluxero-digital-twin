@@ -1,7 +1,13 @@
-build/*.csv
-build/*.pyc
-build/__pycache__/
+# Build system
+build/
 CMakeFiles/
-*.o
-*.log
-*.DS_Store
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Auto-generated simulation outputs
+sim.csv
+UNITY_DATA.csv
+
+# macOS junk
+.DS_Store
