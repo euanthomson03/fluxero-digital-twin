@@ -1,139 +1,179 @@
-🚀 Fluxero Digital Twin Engine
-Second-Life Solar → Boost Converter → Electrolyser → KPIs for Unity Visualisation
+Fluxero Digital Twin (MVP)
 
-This repository contains the backend simulation engine for Fluxero’s digital twin.
-It models how second-life solar feeds a boost converter and a simplified electrolyser, then outputs hydrogen KPIs into a CSV file (UNITY_DATA.csv).
+A lightweight digital twin pipeline for simulating second-life solar → DC-DC boost converter → electrolyser behaviour.
+This MVP connects ngspice, a C shim, and a Go API that Unity can call in real time.
 
-⚠️ Unity is not included in this repo.
-Unity is a separate front-end that simply reads the CSV generated here.
+This lets Unity request a simulation (e.g., number of panels), ngspice runs the electrical model, and the Go service returns hydrogen output and system behaviour.
 
-🌞 What This Engine Does
-PV Source → Boost Converter → DC Bus → Electrolyser → KPIs → (Unity Front-End)
+🌍 Current MVP Overview
 
-It models:
+The system currently includes:
 
-Second-life PV voltage variation
+✓ SPICE Electrical Model
 
-Switching boost converter (MOSFET, diode, inductor)
+Located in netlists/dcdc_boost_basic.cir
 
-PWM control (Ton/Tper)
+Simulates DC-DC boost converter + electrolyser stub
 
-Output capacitor and DC bus behaviour
+Supports adjustable parameters (Ton, Tper, Iset, Vmin, etc.)
 
-Simplified electrolyser threshold + current draw
+✓ C Shim (sim_shim)
 
-Power, efficiency, and hydrogen production estimation
+Wraps the ngspice runner
 
-It outputs:
+Provides a callable function run_simulation()
 
-sim.csv – raw ngspice waveforms
+Used by Go service to trigger simulation and read results
 
-UNITY_DATA.csv – clean KPIs for Unity
+✓ Go Simulation Service
 
-📂 Repository Structure
-spice/
-├── netlists/
-│   └── dcdc_boost_basic.cir
-├── src/
-│   └── main.cpp
-├── build/
-│   ├── spice_runner
-│   ├── export_unity.py
-│   ├── USER_INPUT.csv
-│   └── UNITY_DATA.csv (auto-generated)
-├── CMakeLists.txt
-└── README.md
+Exposes a simple HTTP API
 
-🔧 Build Instructions (C++ Runner)
+Runs the C shim with chosen parameters
 
-In the build directory:
+Returns clean JSON output for Unity
 
-cd build
-cmake ..
-cmake --build .
+Listens on localhost:8080
+
+This is the foundation needed for Unity to animate hydrogen tank filling, show system performance, and eventually integrate real-world data.
+
+📁 Folder Structure
+/netlists
+    dcdc_boost_basic.cir
+
+/build
+    spice_runner        # compiled C++ runner that calls ngspice
+
+/go_service
+    main.go             # Go web API
+    sim_shim.c          # copied C shim
+    sim_shim.h
+
+/src
+    test_shim.c         # basic C shim test program
+
+UNITY_DATA.csv           # legacy CSV output (not needed for API)
+
+🚀 Running the Simulation API
+1. Go to your project folder:
+cd /Users/euanthomson/Documents/packages/electronics/spice
+
+2. Start the Go service:
+go run ./go_service
 
 
-This builds the spice_runner executable.
+You should see:
 
-▶️ Running a Simulation
-1. Edit user parameters
+Go sim service listening on :8080
 
-Edit:
+🧪 Testing the API (CURL or Postman)
+From another terminal:
+curl "http://localhost:8080/simulate"
 
-build/USER_INPUT.csv
+
+Expected JSON result:
+
+{
+  "vout_avg_V": 71.222,
+  "vout_pp_V": 0.468,
+  "Pin_avg_W": 128.909,
+  "Pout_avg_W": 101.453,
+  "eff_pct": 78.7,
+  "H2_kg_window": 1.08e-7,
+  "uptime_pct": 100,
+  "sim_duration_s": 0.005
+}
+
+Testing with Postman (recommended)
+
+Open Postman
+
+Create a new GET request
+
+URL: http://localhost:8080/simulate
+
+Press Send
+
+JSON response appears instantly
+
+This is how Shiv will interact with the API.
+
+📡 Unity Integration (for Shiv)
+
+Unity should:
+
+Send an HTTP GET request to:
+
+http://localhost:8080/simulate
 
 
-Example:
+Receive the JSON response
 
-n_panels,1
-Ton_us,12
-Tper_us,20
-Iset_A,5
-Vmin_V,55
-Rs_el_ohm,0.5
-Cbus_uF,470
+Update Unity UI or animations:
 
-2. Run the simulation:
-cd build
-python3 export_unity.py
+tank fill level
 
-3. View the output:
-cat UNITY_DATA.csv
+hydrogen produced
 
-📊 UNITY_DATA.csv Format
+electrolyser performance
 
-Unity reads a single row containing:
+system efficiency
 
-Column	Meaning
-n_panels	Number of solar panels
-vout_avg_V	Average DC bus voltage
-vout_pp_V	Voltage ripple
-Pin_avg_W	Input power from PV
-Pout_avg_W	Power delivered to electrolyser
-eff_pct	Converter efficiency
-H2_kg_window	Hydrogen produced in the measured window
-uptime_pct	% time electrolyser was active
+Optional: Unity can poll the API repeatedly to simulate “live” behaviour.
+
+🔧 Parameters (configurable inputs)
+
+Right now the service uses defaults in the netlist:
+
+Ton (μs)
+
+Tper (μs)
+
+Iset (A)
+
+Vmin (V)
+
+Rs_el (Ω)
+
+Cbus (μF)
+
+n_panels
+
+These can easily be exposed as API inputs once Unity needs them.
+
+📈 JSON Output (current)
+Field	Meaning
+vout_avg_V	Average converter output voltage
+vout_pp_V	Ripple peak-to-peak voltage
+Pin_avg_W	Power from PV panels
+Pout_avg_W	Power into electrolyser
+eff_pct	Converter + electrolyser combined efficiency
+H2_kg_window	Hydrogen produced over measurement window
+uptime_pct	% time system operated above minimum voltage
 sim_duration_s	Simulation duration
 
-Unity uses these KPIs to animate tanks, gauges, and system behaviour.
+This is enough for Unity to visualise basic hydrogen output.
 
-🔄 Live Refresh Mode (for Unity)
+🛠 Next Steps (Future Work)
+Developer tasks:
 
-To auto-refresh the KPIs every 5 seconds:
+Allow Unity to send panel count as a query parameter
 
-while true; do python3 export_unity.py; sleep 5; done
+Add weather/irradiance input
 
-🧱 Project Status
-Completed:
+Add panel degradation curves
 
-Boost converter SPICE model
+Add more detailed electrolyser model
 
-C++ ngspice runner
+Unity tasks:
 
-Python KPI exporter
+Build front-end UI for simulation results
 
-CSV pipeline for Unity integration
+Animate hydrogen tank filling
 
-Next steps:
+Connect settings sliders to API parameters
 
-Add irradiance/location inputs
+✔ Status
 
-Use real panel datasheets
-
-Improve electrolyser I–V behaviour
-
-Add hydrogen storage + fuel cell modules
-
-Upgrade CSV → WebSocket live streaming
-
-Requirements
-
-macOS/Linux
-
-ngspice + libngspice
-
-C++17 compiler
-
-Python 3 (pandas, numpy)
-
-Unity (separate front-end project)
+The digital twin MVP backend is fully running:
+Go service → C shim → ngspice → JSON → ready for Unity integration.
