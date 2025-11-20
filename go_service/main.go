@@ -16,6 +16,7 @@ import (
 
 // Go struct to hold the response we send back
 type SimResponse struct {
+	NPanels      int     `json:"n_panels"`
 	VoutAvgV     float64 `json:"vout_avg_V"`
 	VoutPpV      float64 `json:"vout_pp_V"`
 	PinAvgW      float64 `json:"Pin_avg_W"`
@@ -55,12 +56,12 @@ func getInt(r *http.Request, name string, def int) int {
 func simulateHandler(w http.ResponseWriter, r *http.Request) {
 	// 1) Read inputs from query params (or use defaults)
 	nPanels := getInt(r, "n_panels", 1)
-	TonUs   := getFloat(r, "Ton_us", 12.0)
-	TperUs  := getFloat(r, "Tper_us", 20.0)
-	IsetA   := getFloat(r, "Iset_A", 5.0)
-	VminV   := getFloat(r, "Vmin_V", 55.0)
-	RsEl    := getFloat(r, "Rs_el_ohm", 0.5)
-	CbusUF  := getFloat(r, "Cbus_uF", 470.0)
+	TonUs := getFloat(r, "Ton_us", 12.0)
+	TperUs := getFloat(r, "Tper_us", 20.0)
+	IsetA := getFloat(r, "Iset_A", 5.0)
+	VminV := getFloat(r, "Vmin_V", 55.0)
+	RsEl := getFloat(r, "Rs_el_ohm", 0.5)
+	CbusUF := getFloat(r, "Cbus_uF", 470.0)
 
 	log.Printf("simulate: n_panels=%d Ton=%.2f Tper=%.2f Iset=%.2f Vmin=%.2f Rs_el=%.2f Cbus=%.2f",
 		nPanels, TonUs, TperUs, IsetA, VminV, RsEl, CbusUF)
@@ -84,6 +85,7 @@ func simulateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 3) Build response struct
 	resp := SimResponse{
+		NPanels:      nPanels,
 		VoutAvgV:     float64(res.vout_avg_V),
 		VoutPpV:      float64(res.vout_pp_V),
 		PinAvgW:      float64(res.Pin_avg_W),

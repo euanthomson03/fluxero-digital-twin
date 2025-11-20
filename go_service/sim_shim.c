@@ -93,5 +93,13 @@ int run_simulation(
         col++;
     }
 
+    // 5) v0.1 realism: scale power + hydrogen by number of panels.
+    //    Do NOT scale voltage or ripple.
+    if (n_panels > 1) {
+        out->Pin_avg_W    *= n_panels;
+        out->Pout_avg_W   *= n_panels;
+        out->H2_kg_window *= n_panels;
+    }
+
     return 0; // success
 }
